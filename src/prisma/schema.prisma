@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Experience {
+  id                   Int      @id @default(1)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  aravindMemoriesJson  String?
+  aravindFeelings      String?
+  aravindQuestionsJson String?
+  photoMetadataJson    String?
+}
+
+model CloneMessage {
+  id         Int      @id @default(autoincrement())
+  createdAt  DateTime @default(now())
+  senderRole String
+  text       String
+  sessionId  String?
+}
+
+model DirectMessage {
+  id         Int      @id @default(autoincrement())
+  createdAt  DateTime @default(now())
+  senderRole String
+  text       String
+}
+
+model MemoryChunk {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  source    String
+  role      String
+  content   String
+}
+
+model AnalyticsSnapshot {
+  id          Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+  summaryText String
+  themesJson  String?
+  toneJson    String?
+}
