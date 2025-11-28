@@ -40,6 +40,13 @@ model MemoryChunk {
   content   String
 }
 
+model Message {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  role      String
+  content   String
+}
+
 model AnalyticsSnapshot {
   id          Int      @id @default(autoincrement())
   createdAt   DateTime @default(now())

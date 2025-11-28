@@ -24,7 +24,7 @@ export function sanitizeCloneText(text: string): string {
   result = result.replace(/_[^_\n]{0,120}_/g, " ");
 
   // If the whole reply is wrapped in single markdown markers, unwrap it.
-  result = result.replace(/^\s*[_*]+(.*?)[_*]+\s*$/s, "$1").trim();
+  result = result.replace(/^\s*[_*]+([\s\S]*?)[_*]+\s*$/, "$1").trim();
 
   // Collapse excessive whitespace.
   result = result.replace(/\s+/g, " ").trim();

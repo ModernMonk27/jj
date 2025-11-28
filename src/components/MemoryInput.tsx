@@ -18,12 +18,21 @@ export default function MemoryInput({ experience }: MemoryInputProps) {
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
+        let parsedMemories: any = {};
+        try {
+            parsedMemories = experience.aravindMemoriesJson
+                ? JSON.parse(experience.aravindMemoriesJson)
+                : {};
+        } catch (e) {
+            parsedMemories = {};
+        }
+
         setFormData({
-            aravindMem1: experience.aravindMem1 || '',
-            aravindMem2: experience.aravindMem2 || '',
+            aravindMem1: parsedMemories.mem1 || '',
+            aravindMem2: parsedMemories.mem2 || '',
             aravindFeelings: experience.aravindFeelings || '',
-            aravindComfort: experience.aravindComfort ? JSON.parse(experience.aravindComfort) : [],
-            aravindMessage: experience.aravindMessage || '',
+            aravindComfort: parsedMemories.comfort || [],
+            aravindMessage: parsedMemories.message || '',
         });
     }, [experience]);
 

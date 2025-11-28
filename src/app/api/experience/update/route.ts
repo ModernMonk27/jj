@@ -14,22 +14,23 @@ export async function POST(request: Request) {
         }
 
         // Update experience
+        const memoriesJson = JSON.stringify({
+            mem1: data.aravindMem1 || "",
+            mem2: data.aravindMem2 || "",
+            message: data.aravindMessage || "",
+            comfort: data.aravindComfort || [],
+        });
+
         const experience = await prisma.experience.upsert({
             where: { id: 1 },
             update: {
-                aravindMem1: data.aravindMem1,
-                aravindMem2: data.aravindMem2,
+                aravindMemoriesJson: memoriesJson,
                 aravindFeelings: data.aravindFeelings,
-                aravindComfort: JSON.stringify(data.aravindComfort || []),
-                aravindMessage: data.aravindMessage,
             },
             create: {
                 id: 1,
-                aravindMem1: data.aravindMem1,
-                aravindMem2: data.aravindMem2,
+                aravindMemoriesJson: memoriesJson,
                 aravindFeelings: data.aravindFeelings,
-                aravindComfort: JSON.stringify(data.aravindComfort || []),
-                aravindMessage: data.aravindMessage,
             },
         });
 

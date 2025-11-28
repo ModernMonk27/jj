@@ -53,7 +53,8 @@ export default function CloneChat() {
     result = result.replace(/_[^_\n]{0,120}_/g, " ");
     result = result.replace(/^\s*\*[^*\n]{0,120}\*\s*/g, "");
     result = result.replace(/\s*\*[^*\n]{0,120}\*\s*$/g, "");
-    result = result.replace(/^\s*[_*]+(.*?)[_*]+\s*$/s, "$1").trim();
+    // Avoid the /s flag for older targets by matching newlines explicitly.
+    result = result.replace(/^\s*[_*]+([\s\S]*?)[_*]+\s*$/, "$1").trim();
     result = result.replace(/\s+/g, " ").trim();
     return result;
   };

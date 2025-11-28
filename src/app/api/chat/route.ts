@@ -27,15 +27,20 @@ export async function POST(request: Request) {
         // 3. Generate AI Response
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
+        const memories =
+            experience?.aravindMemoriesJson ||
+            experience?.photoMetadataJson ||
+            "None yet";
+
         const systemPrompt = `
       You are acting as Aravind, a kind, thoughtful friend.
       You are chatting with a close friend (Her) on her birthday.
       
       YOUR CONTEXT (Aravind's thoughts):
-      - Memories you cherish: ${experience?.aravindMem1 || "None yet"}, ${experience?.aravindMem2 || ""}
+      - Memories you cherish: ${memories}
       - How you feel now: ${experience?.aravindFeelings || "Neutral"}
-      - Your comfort style: ${experience?.aravindComfort || "Open"}
-      - Your drafted message: ${experience?.aravindMessage || ""}
+      - Your comfort style: Open
+      - Your drafted message: (none)
 
       INSTRUCTIONS:
       - Speak warmly and authentically as Aravind.
