@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateAnalytics } from '@/lib/agents';
+import prisma from '@/lib/prisma';
 
 export async function GET(request: Request) {
     try {
@@ -8,12 +9,16 @@ export async function GET(request: Request) {
         // or we can check a header if we want to be strict.
 
         const analytics = await generateAnalytics();
+        const events = await prisma.activityEvent.findMany({
+            orderBy: { createdAt: 'desc' },
+            take: 200,
+        });
 
         if (!analytics) {
             return NextResponse.json({ error: 'Failed to generate analytics' }, { status: 500 });
         }
 
-        return NextResponse.json(analytics);
+        return NextResponse.json({ analysis: analytics, events });
     } catch (error) {
         console.error('Analytics error:', error);
         return NextResponse.json({ error: 'Failed to fetch analytics' }, { status: 500 });

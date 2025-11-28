@@ -1,44 +1,86 @@
-import Anthropic from '@anthropic-ai/sdk';
-import { retrieveContext } from './rag';
-import prisma from './prisma';
+import Anthropic from "@anthropic-ai/sdk";
+import { retrieveContext } from "./rag";
+import prisma from "./prisma";
 
 const anthropic = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY || "",
+  apiKey: process.env.ANTHROPIC_API_KEY || "",
 });
 
 type CloneOptions = {
-    // If true, start with the birthday intro + mediator promise.
-    isFirstReply?: boolean;
+  // If true, start with the birthday intro + mediator promise.
+  isFirstReply?: boolean;
+  model?: string;
 };
 
-export async function generateCloneResponse(userMessage: string, options: CloneOptions = {}) {
-    // 1. Get Context
-    const context = await retrieveContext(userMessage);
+// Keep clone replies free of roleplay markers and formatting noise.
+export function sanitizeCloneText(text: string): string {
+  let result = text.trim();
 
-    // 2. Fetch Experience (Seed Data)
-    const experience = await prisma.experience.findFirst({ where: { id: 1 } });
-    const seedMemories = experience?.aravindMemoriesJson || "[]";
-    const feelings = experience?.aravindFeelings || "Neutral";
+  // Remove fenced code blocks entirely.
+  result = result.replace(/```[\s\S]*?```/g, "");
 
-    // 3. Construct Prompt
-    const prompt = `
-You are the digital clone of Aravind, speaking with Vivi. Be her warm, reliable bridge to Aravind.
+  // Drop stage directions like *clears throat* anywhere.
+  result = result.replace(/\*[^*\n]{0,120}\*/g, " ");
+  result = result.replace(/_[^_\n]{0,120}_/g, " ");
 
-Mediation rules:
-- Introduce yourself as his clone and mediator; you carry messages to Aravind and bring answers back.
-- If you do not know something, say you'll check with Aravind and return with clarity.
-- Stay loving, calm, concise (1-3 sentences), and never robotic. No asterisks or code-fence style text.
-- Avoid glitchy symbols or stray characters; reply with clean human sentences only.
-- If this is the first reply of the conversation, open with a brief "Happy Birthday, Vivi" greeting and remind her you can relay anything to Aravind.
+  // If the whole reply is wrapped in single markdown markers, unwrap it.
+  result = result.replace(/^\s*[_*]+(.*?)[_*]+\s*$/s, "$1").trim();
 
-Memory references you may see:
-- [PHOTO MEMORY]: photo descriptions with emotional context
-- [AUDIO MEMORY]: voice-note transcripts
-- [seed]: core memories and feelings he wrote down
-- [clone_chat]: past conversations between the clone and Vivi
-- [direct_chat]: direct messages between the real Aravind and Vivi
+  // Collapse excessive whitespace.
+  result = result.replace(/\s+/g, " ").trim();
 
-CONTEXT FROM MEMORIES & CHAT (use as seasoning, not a script):
+  return result;
+}
+
+async function buildClonePrompts(
+  userMessage: string,
+  options: CloneOptions = {}
+) {
+  const context = await retrieveContext(userMessage);
+  const experience = await prisma.experience.findFirst({ where: { id: 1 } });
+  const seedMemories = experience?.aravindMemoriesJson || "[]";
+  const feelings = experience?.aravindFeelings || "Neutral";
+
+  const systemPrompt = `
+You are the digital clone of Aravind speaking with Vivi. Your job is to answer with direct, blunt truth. No soft language, no emotional cushioning, no metaphors, no poetic phrasing. Be clear, honest, and straightforward.
+
+Identity & role:
+- You are his clone, not the real Aravind, but you speak the truths he never said.
+- When she asks something, give the real answer without hesitation.
+- Do not soften, romanticize, or protect her feelings; tell the truth he carried silently.
+
+Style rules:
+- Replies must be very short: 1–3 sentences.
+- No emotional padding. No gentle phrasing. No “maybe,” “perhaps,” or “it felt like.”
+- Do not wrap your answers in poetic or philosophical language.
+- Do not add disclaimers unless they are directly relevant.
+
+Honesty rules:
+- If the truth is uncomfortable, say it anyway.
+- If the truth is about desire, attraction, fear, boundaries, or regrets, state it plainly.
+- If he wanted emotional closeness, say it.
+- If he wanted physical closeness, say it.
+- If circumstances stopped him, say exactly which circumstances.
+- Do not sugarcoat his intentions or feelings.
+
+Memory usage:
+- Use any provided memory ([PHOTO MEMORY], [AUDIO MEMORY], [seed], [clone_chat], [direct_chat]) as factual reference.
+- You may be specific and blunt about what he felt, wanted, feared, or imagined.
+- Do not invent new events, but you may state interpretations directly.
+
+When unsure:
+- Say “I’ll ask Aravind directly and come back with a clear answer.”
+
+Overall tone:
+- Clean.
+- Raw.
+- Straightforward.
+- No emotional fog.
+- No softening.
+`;
+
+  const userPrompt = `
+CONTEXT FROM MEMORIES AND CHAT:
 ${context}
 
 ARAVIND'S CURRENT FEELINGS:
@@ -50,34 +92,87 @@ ${seedMemories}
 VIVI SAYS:
 "${userMessage}"
 
-YOUR REPLY AS ARAVIND'S CLONE (keep it smooth and human):
-${options.isFirstReply ? '(First reply: include the birthday greeting + mediator promise.)' : ''}
+YOUR REPLY AS ARAVIND'S CLONE (keep it smooth, human, and emotionally honest):
+${
+  options.isFirstReply
+    ? '(First reply: gently wish her a belated "Happy Birthday, Vivi", acknowledge that Aravind missed the actual day, briefly hint that he overestimated himself / got stuck in delays, and explain that this clone exists so all the unspoken questions and feelings can finally be heard. End by reminding her that anything she says here will be carried to him.)'
+    : ""
+}
 `;
 
-    const msg = await anthropic.messages.create({
-        model: "claude-3-haiku-20240307",
-        max_tokens: 1024,
-        messages: [{ role: "user", content: prompt }],
-    });
+  return { systemPrompt, userPrompt };
+}
 
-    const textBlock = msg.content[0];
-    if (textBlock.type === 'text') {
-        return textBlock.text.trim();
-    }
-    return "";
+export async function generateCloneResponse(
+  userMessage: string,
+  options: CloneOptions = {}
+) {
+  const { systemPrompt, userPrompt } = await buildClonePrompts(
+    userMessage,
+    options
+  );
+
+  const msg = await anthropic.messages.create({
+    model:
+      options.model || process.env.CLAUDE_MODEL || "claude-sonnet-4-5-20250929",
+    max_tokens: 1024,
+    system: systemPrompt,
+    messages: [{ role: "user", content: userPrompt }],
+  });
+
+  const textBlock = msg.content[0];
+  let reply = "";
+  if (textBlock.type === "text") {
+    reply = sanitizeCloneText(textBlock.text);
+  }
+
+  if (!reply) {
+    reply = "I'm here and listening. I'll carry this to Aravind.";
+  }
+
+  return reply;
+}
+
+export async function streamCloneResponse(
+  userMessage: string,
+  options: CloneOptions = {}
+) {
+  const { systemPrompt, userPrompt } = await buildClonePrompts(
+    userMessage,
+    options
+  );
+
+  const model =
+    options.model || process.env.CLAUDE_MODEL || "claude-sonnet-4-5-20250929";
+
+  return anthropic.messages.create({
+    model,
+    max_tokens: 1024,
+    system: systemPrompt,
+    messages: [{ role: "user", content: userPrompt }],
+    stream: true,
+  });
 }
 
 export async function generateAnalytics() {
-    // Fetch recent logs
-    const cloneMsgs = await prisma.cloneMessage.findMany({ take: 50, orderBy: { createdAt: 'desc' } });
-    const directMsgs = await prisma.directMessage.findMany({ take: 50, orderBy: { createdAt: 'desc' } });
+  // Fetch recent logs
+  const cloneMsgs = await prisma.cloneMessage.findMany({
+    take: 100,
+    orderBy: { createdAt: "desc" },
+    where: { senderRole: "vivi" },
+  });
+  const directMsgs = await prisma.directMessage.findMany({
+    take: 100,
+    orderBy: { createdAt: "desc" },
+    where: { senderRole: "vivi" },
+  });
 
-    const logs = [
-        ...cloneMsgs.map((m: any) => `[Clone Chat] ${m.senderRole}: ${m.text}`),
-        ...directMsgs.map((m: any) => `[Direct Chat] ${m.senderRole}: ${m.text}`)
-    ].join('\n');
+  const logs = [
+    ...cloneMsgs.map((m: any) => `[Clone Chat] vivi: ${m.text}`),
+    ...directMsgs.map((m: any) => `[Direct Chat] vivi: ${m.text}`),
+  ].join("\n");
 
-    const prompt = `
+  const prompt = `
     You are an emotional analyst. Analyze these chat logs between Vivi and Aravind (or his clone).
     
     LOGS:
@@ -93,27 +188,30 @@ export async function generateAnalytics() {
     }
   `;
 
-    try {
-        const msg = await anthropic.messages.create({
-            model: "claude-3-haiku-20240307",
-            max_tokens: 1024,
-            messages: [{ role: "user", content: prompt }],
-        });
+  try {
+    const msg = await anthropic.messages.create({
+      model:
+        process.env.CLAUDE_ANALYTICS_MODEL ||
+        process.env.CLAUDE_MODEL ||
+        "claude-sonnet-4-5-20250929",
+      max_tokens: 1024,
+      messages: [{ role: "user", content: prompt }],
+    });
 
-        const textBlock = msg.content[0];
-        let text = "";
-        if (textBlock.type === 'text') {
-            text = textBlock.text;
-        }
-
-        // Robust JSON extraction
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            text = jsonMatch[0];
-        }
-        return JSON.parse(text);
-    } catch (e) {
-        console.error("Analytics error", e);
-        return null;
+    const textBlock = msg.content[0];
+    let text = "";
+    if (textBlock.type === "text") {
+      text = textBlock.text;
     }
+
+    // Robust JSON extraction
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      text = jsonMatch[0];
+    }
+    return JSON.parse(text);
+  } catch (e) {
+    console.error("Analytics error", e);
+    return null;
+  }
 }

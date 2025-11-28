@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import QuoteBackground from "@/components/QuoteBackground";
 import CloneChat from "@/components/CloneChat";
@@ -15,6 +15,51 @@ function ExperienceContent() {
   const [activeTab, setActiveTab] = useState<"chat" | "clone" | "analytics">(
     "clone"
   );
+  const lastScrollLogRef = useRef(0);
+
+  const logActivity = async (
+    type: string,
+    detail?: string,
+    metadata?: Record<string, any>
+  ) => {
+    if (role !== "vivi") return;
+    try {
+      await fetch("/api/activity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type,
+          detail,
+          metadata,
+          path: "/experience?role=vivi",
+          userRole: "vivi",
+        }),
+      });
+    } catch (e) {
+      console.error("Failed to log activity", e);
+    }
+  };
+
+  useEffect(() => {
+    if (role !== "vivi") return;
+    logActivity("vivi_enter_experience");
+
+    const onScroll = () => {
+      const now = Date.now();
+      if (now - lastScrollLogRef.current > 4000) {
+        lastScrollLogRef.current = now;
+        logActivity("vivi_scroll_page", undefined, {
+          scrollY: Math.round(window.scrollY),
+          innerHeight: Math.round(window.innerHeight),
+          docHeight: Math.round(document.body.scrollHeight),
+        });
+      }
+    };
+
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role]);
 
   // Logic:
   // 1. role=vivi -> Show Clone Chat + Direct Chat

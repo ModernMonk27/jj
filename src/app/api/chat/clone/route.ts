@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { generateCloneResponse } from '@/lib/agents';
 import { addMemoryChunk } from '@/lib/rag';
+import {
+    sanitizeCloneText,
+    streamCloneResponse,
+} from '@/lib/agents';
 
 export async function POST(request: Request) {
     try {
@@ -21,18 +24,38 @@ export async function POST(request: Request) {
         // 2. Add to Memory
         await addMemoryChunk('clone_chat', 'vivi', text);
 
-        // 3. Generate Response
-        const replyText = await generateCloneResponse(text, { isFirstReply });
+        // 3. Stream Response
+        const anthropicStream = await streamCloneResponse(text, { isFirstReply });
+        const { readable, writable } = new TransformStream();
+        const writer = writable.getWriter();
+        const encoder = new TextEncoder();
+        let fullReply = '';
 
-        // 4. Save Response
-        const replyMsg = await prisma.cloneMessage.create({
-            data: { senderRole: 'clone', text: replyText },
+        (async () => {
+            try {
+                for await (const chunk of anthropicStream as any) {
+                    if (chunk.type === 'content_block_delta' && chunk.delta?.text) {
+                        // Clean chunk to avoid streaming stage directions to client
+                        const cleanChunk = chunk.delta.text.replace(/\*[^*\n]{0,120}\*/g, ' ').replace(/_[^_\n]{0,120}_/g, ' ');
+                        fullReply += cleanChunk;
+                        await writer.write(encoder.encode(cleanChunk));
+                    }
+                }
+                const cleaned = sanitizeCloneText(fullReply);
+                await prisma.cloneMessage.create({
+                    data: { senderRole: 'clone', text: cleaned },
+                });
+                await addMemoryChunk('clone_chat', 'clone', cleaned);
+            } catch (streamError) {
+                console.error('Clone chat stream error:', streamError);
+            } finally {
+                await writer.close();
+            }
+        })();
+
+        return new NextResponse(readable, {
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
         });
-
-        // 5. Add to Memory
-        await addMemoryChunk('clone_chat', 'clone', replyText);
-
-        return NextResponse.json(replyMsg);
     } catch (error) {
         console.error('Clone chat error:', error);
         return NextResponse.json({ error: 'Failed to chat' }, { status: 500 });

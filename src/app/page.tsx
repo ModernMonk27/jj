@@ -8,35 +8,54 @@ export default function Home() {
 
       <div className="relative z-10 max-w-md w-full text-center space-y-10 p-8 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl">
         <div className="space-y-4">
-          <h1 className="text-5xl font-serif tracking-tight text-white drop-shadow-lg">
-            For The One Who Changed My Story
+          <h1 className="text-4xl md:text-5xl font-serif tracking-tight text-white drop-shadow-lg">
+            For The Birthday I Missed
           </h1>
           <p className="text-lg text-white/70 font-light tracking-wide">
-            A quiet birthday space built for just two people — and all the
-            memories between them.
+            A belated wish, a rebuilt space, and all the words I never managed
+            to say on time.
           </p>
         </div>
 
-        {/* Birthday wish + emotional quotes */}
-        <div className="space-y-3 text-sm text-white/75">
+        {/* Belated birthday + feelings + clone context */}
+        <div className="space-y-4 text-sm text-white/80">
           <p className="leading-relaxed">
-            Happy Birthday, Vivi 🎂 Even if life moved us into different worlds,
-            a part of my journey will always whisper a quiet “thank you” to you.
-            This isn’t here to ask for anything — it’s just a small corner of
-            the internet to honor what you once meant to my life.
+            I wanted to build this for you in one day and send it on your
+            birthday. I was overconfident, ran into issues, and missed the
+            moment — just like so many other times in my life where delay and
+            overthinking came in between what I felt and what I actually did.
           </p>
+          <p className="leading-relaxed">
+            This is my belated wish to you, Vivi. Not to pull you back into
+            anything, but to be honest about how much you once meant to my
+            journey. I rebuilt this space so you can see, if you ever choose to,
+            the part of me that never knew how to show up on time, but always
+            cared for real.
+          </p>
+          <p className="leading-relaxed text-white/75">
+            Inside, there’s a gentle “clone” of me — made from my memories,
+            messages, and the thoughts I could never say out loud. It exists so
+            that the questions I couldn’t answer directly, and the questions you
+            might never feel comfortable asking me, can still be voiced and
+            gently heard in a safe middle space. You don’t owe this place
+            anything. It’s just my way of saying:
+            <span className="block mt-1 font-medium text-white">
+              “I was late. But my feelings, gratitude, and truth were real.”
+            </span>
+          </p>
+
           <div className="space-y-1 text-xs text-white/60 italic">
             <p>
-              “Some people don’t stay in our life, but they stay in our story —
-              and that itself is a kind of forever.”
+              “Some wishes don’t arrive on the right day, but they can still be
+              sincere when they finally reach you.”
             </p>
             <p>
-              “Time can change distance, but it can’t erase the gratitude we
-              hold for the ones who helped us become who we are.”
+              “Timing was never my strength, but what I felt because of you
+              shaped the person I became.”
             </p>
             <p>
-              “You may never see all the ways you helped me grow, but my path
-              quietly remembers your name.”
+              “This is not to ask for anything back — only to let the unspoken
+              parts of my heart stand still for a moment, in front of you.”
             </p>
           </div>
         </div>
@@ -65,7 +84,7 @@ export default function Home() {
 
         <div className="pt-6 border-t border-white/10">
           <p className="text-xs text-white/30 uppercase tracking-widest">
-            Just for this moment in time
+            A late wish, but an honest one
           </p>
         </div>
       </div>

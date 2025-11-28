@@ -47,3 +47,13 @@ model AnalyticsSnapshot {
   themesJson  String?
   toneJson    String?
 }
+
+model ActivityEvent {
+  id           Int      @id @default(autoincrement())
+  createdAt    DateTime @default(now())
+  userRole     String?
+  type         String
+  path         String?
+  detail       String?
+  metadataJson String?
+}
