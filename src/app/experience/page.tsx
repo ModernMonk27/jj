@@ -8,12 +8,75 @@ import DirectChat from "@/components/DirectChat";
 import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 import QuestionsView from "@/components/QuestionsView";
 
+function LLMTestPanel() {
+  const [status, setStatus] = useState<"idle" | "loading" | "ok" | "error">(
+    "idle"
+  );
+  const [output, setOutput] = useState("");
+
+  const runTest = async () => {
+    setStatus("loading");
+    setOutput("");
+    try {
+      const res = await fetch("/api/llm-test");
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setStatus("error");
+        setOutput(data?.error || "Failed");
+        return;
+      }
+      setStatus("ok");
+      setOutput(data.text || "LLM OK");
+    } catch (err: any) {
+      setStatus("error");
+      setOutput(err?.message || "Failed");
+    }
+  };
+
+  return (
+    <div className="p-4 space-y-4 text-white">
+      <div className="bg-white/10 border border-white/10 rounded-xl p-4">
+        <h3 className="text-lg font-serif mb-2">LLM API Check</h3>
+        <p className="text-sm text-white/70">
+          Run a quick call to the LLM to verify API/key connectivity in prod.
+        </p>
+        <button
+          onClick={runTest}
+          disabled={status === "loading"}
+          className="mt-3 px-4 py-2 rounded-full bg-white text-purple-900 font-medium disabled:opacity-60"
+        >
+          {status === "loading" ? "Testing..." : "Run Test"}
+        </button>
+      </div>
+      <div className="bg-white/5 border border-white/10 rounded-xl p-4 min-h-[80px]">
+        <div className="text-xs uppercase text-white/50 mb-1">Result</div>
+        <div
+          className={`text-sm ${
+            status === "error"
+              ? "text-red-300"
+              : status === "ok"
+              ? "text-green-200"
+              : "text-white/80"
+          }`}
+        >
+          {status === "idle" && "Not run yet."}
+          {status === "loading" && "Running test..."}
+          {(status === "ok" || status === "error") && output}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ExperienceContent() {
   const searchParams = useSearchParams();
   const role = searchParams.get("role");
   const key = searchParams.get("key");
   const [activeTab, setActiveTab] = useState<"chat" | "clone" | "analytics">(
     "clone"
+  );
+  const [publicTab, setPublicTab] = useState<"questions" | "llmtest">(
+    "questions"
   );
   const lastScrollLogRef = useRef(0);
 
@@ -186,7 +249,40 @@ function ExperienceContent() {
         )}
 
         {/* ARAVIND PUBLIC VIEW */}
-        {role === "aravind" && !isValidAravind && <QuestionsView />}
+        {role === "aravind" && !isValidAravind && (
+          <div className="flex flex-col h-full">
+            <div className="flex gap-4 mb-4 justify-center">
+              <button
+                onClick={() => setPublicTab("questions")}
+                className={`px-6 py-2 rounded-full text-sm transition-all ${
+                  publicTab === "questions"
+                    ? "bg-white text-purple-900 font-medium"
+                    : "bg-white/10 text-white hover:bg-white/20"
+                }`}
+              >
+                Questions
+              </button>
+              <button
+                onClick={() => setPublicTab("llmtest")}
+                className={`px-6 py-2 rounded-full text-sm transition-all ${
+                  publicTab === "llmtest"
+                    ? "bg-white text-purple-900 font-medium"
+                    : "bg-white/10 text-white hover:bg-white/20"
+                }`}
+              >
+                LLM Test
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              {publicTab === "questions" ? (
+                <QuestionsView />
+              ) : (
+                <LLMTestPanel />
+              )}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
